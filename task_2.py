@@ -94,9 +94,14 @@ class TextProcessor:
         return lemma_groups
 
     def process_all_pages(self):
-        """Обработка всех страниц из папки pages"""
-        all_tokens = set()
+        """Обработка всех страниц из папки pages с сохранением результатов только для каждой страницы"""
         page_stats = []
+
+        # Создаем папки для результатов по страницам
+        tokens_dir = 'tokens_per_page'
+        lemmas_dir = 'lemmas_per_page'
+        os.makedirs(tokens_dir, exist_ok=True)
+        os.makedirs(lemmas_dir, exist_ok=True)
 
         # Читаем индексный файл для получения URL
         url_by_page = {}
@@ -127,68 +132,85 @@ class TextProcessor:
                     # Извлекаем текст из HTML
                     text = self.extract_text_from_html(html_content)
 
-                    # Токенизируем текст
-                    tokens = self.tokenize(text)
+                    # Токенизируем текст для текущей страницы
+                    page_tokens = self.tokenize(text)
+
+                    # Сохраняем токены для текущей страницы
+                    self.save_page_tokens(page_num, page_tokens, url)
+
+                    # Лемматизируем токены для текущей страницы
+                    page_lemma_groups = self.lemmatize_tokens(page_tokens)
+
+                    # Сохраняем леммы для текущей страницы
+                    self.save_page_lemmas(page_num, page_lemma_groups, url)
 
                     # Сохраняем статистику по странице
-                    page_stats.append((page_num, len(tokens), url))
+                    page_stats.append((page_num, len(page_tokens), url))
 
-                    # Добавляем токены в общее множество
-                    all_tokens.update(tokens)
-
-                    print(f"✓ Страница {page_num}: {len(tokens)} токенов")
+                    print(f"✓ Страница {page_num}: {len(page_tokens)} токенов, {len(page_lemma_groups)} лемм")
 
                 except Exception as e:
                     print(f"✗ Ошибка при обработке {filename}: {e}")
 
-        return all_tokens
+        # Выводим итоговую статистику
+        print(f"\n{'=' * 50}")
+        print(f"Обработано страниц: {len(page_stats)}")
+        if page_stats:
+            total_tokens = sum(stat[1] for stat in page_stats)
+            print(f"Всего токенов (с повторениями): {total_tokens}")
+            print(f"Среднее количество токенов на страницу: {total_tokens / len(page_stats):.1f}")
 
-    def save_results(self, tokens, lemma_groups):
-        """Сохранение результатов в файлы"""
+    def save_page_tokens(self, page_num, tokens, url):
+        """Сохранение токенов для конкретной страницы"""
+        tokens_filename = os.path.join('tokens_per_page', f'page_{page_num}_tokens.txt')
 
-        # Сохраняем список токенов
-        with open('tokens.txt', 'w', encoding='utf-8') as f:
+        with open(tokens_filename, 'w', encoding='utf-8') as f:
+            f.write(f"Страница: {page_num}\n")
+            f.write(f"URL: {url}\n")
+            f.write(f"Количество уникальных токенов: {len(tokens)}\n")
+            f.write("-" * 50 + "\n\n")
+
             for token in sorted(tokens):
                 f.write(f"{token}\n")
 
-        print(f"\nСохранено {len(tokens)} токенов в tokens.txt")
+    def save_page_lemmas(self, page_num, lemma_groups, url):
+        """Сохранение лемм для конкретной страницы"""
+        lemmas_filename = os.path.join('lemmas_per_page', f'page_{page_num}_lemmas.txt')
 
-        # Сохраняем группы лемм
-        with open('lemmas.txt', 'w', encoding='utf-8') as f:
+        with open(lemmas_filename, 'w', encoding='utf-8') as f:
+            f.write(f"Страница: {page_num}\n")
+            f.write(f"URL: {url}\n")
+            f.write(f"Количество уникальных лемм: {len(lemma_groups)}\n")
+            f.write("-" * 50 + "\n\n")
+
             for lemma, token_set in sorted(lemma_groups.items()):
-                # Сортируем токены в группе
                 sorted_tokens = sorted(token_set)
-                # Формируем строку: лемма пробел токен1 пробел токен2 ...
                 line = f"{lemma} >> " + " ".join(sorted_tokens)
                 f.write(line + "\n")
-
-        print(f"Сохранено {len(lemma_groups)} лемм в lemmas.txt")
-
 
     def run(self):
         """Основной метод для запуска обработки"""
         print("Начало обработки HTML файлов...")
         print(f"Используется {len(self.stop_words)} стоп-слов из библиотеки nltk")
 
-        # Обрабатываем все страницы
-        all_tokens = self.process_all_pages()
+        # Обрабатываем все страницы и сохраняем результаты только по отдельности
+        self.process_all_pages()
 
-        if not all_tokens:
-            print("Не найдено токенов для обработки!")
-            return
+        print(f"\nГотово! Результаты сохранены в папках:")
+        print(f"- tokens_per_page/ (файлы с токенами для каждой страницы)")
+        print(f"- lemmas_per_page/ (файлы с леммами для каждой страницы)")
 
-        print("\nЛемматизация токенов...")
+    def run(self):
+        """Основной метод для запуска обработки"""
+        print("Начало обработки HTML файлов...")
+        print(f"Используется {len(self.stop_words)} стоп-слов из библиотеки nltk")
 
-        # Лемматизируем токены
-        lemma_groups = self.lemmatize_tokens(all_tokens)
+        # Обрабатываем все страницы и сохраняем результаты только по отдельности
+        self.process_all_pages()
 
-        print(f"Получено {len(lemma_groups)} уникальных лемм")
-
-        # Сохраняем результаты
-        self.save_results(all_tokens, lemma_groups)
-
-        print("\nГотово! Проверьте файлы tokens.txt и lemmas.txt")
-
+        print(f"\nГотово! Результаты сохранены в папках:")
+        print(f"- tokens_per_page/ (файлы с токенами для каждой страницы)")
+        print(f"- lemmas_per_page/ (файлы с леммами для каждой страницы)")
 
 if __name__ == "__main__":
     # Установка необходимых пакетов
