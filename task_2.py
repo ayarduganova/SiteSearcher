@@ -6,7 +6,6 @@ from collections import defaultdict
 import nltk
 from nltk.corpus import stopwords
 
-
 class TextProcessor:
     def __init__(self, pages_dir='/pages', index_file='index.txt'):
         self.pages_dir = pages_dir
@@ -187,18 +186,6 @@ class TextProcessor:
                 sorted_tokens = sorted(token_set)
                 line = f"{lemma} >> " + " ".join(sorted_tokens)
                 f.write(line + "\n")
-
-    def run(self):
-        """Основной метод для запуска обработки"""
-        print("Начало обработки HTML файлов...")
-        print(f"Используется {len(self.stop_words)} стоп-слов из библиотеки nltk")
-
-        # Обрабатываем все страницы и сохраняем результаты только по отдельности
-        self.process_all_pages()
-
-        print(f"\nГотово! Результаты сохранены в папках:")
-        print(f"- tokens_per_page/ (файлы с токенами для каждой страницы)")
-        print(f"- lemmas_per_page/ (файлы с леммами для каждой страницы)")
 
     def run(self):
         """Основной метод для запуска обработки"""
