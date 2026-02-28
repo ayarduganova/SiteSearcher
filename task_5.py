@@ -1,8 +1,6 @@
 import os
 import re
-import json
-import math
-from collections import defaultdict, Counter
+from collections import Counter
 from pymorphy3 import MorphAnalyzer
 import numpy as np
 
@@ -48,11 +46,12 @@ class VectorSearch:
                     self.doc_urls[doc_id] = url
 
     def load_tfidf_vectors(self):
-        """Загрузка TF-IDF векторов из файлов"""
+        """Загрузка TF-IDF векторов из файлов (созданы task_2)"""
         if not os.path.exists(self.tfidf_dir):
-            print(f"Папка {self.tfidf_dir} не найдена, создаём векторы...")
-            self.build_tfidf_vectors()
-            return
+            raise FileNotFoundError(
+                f"Папка {self.tfidf_dir} не найдена. "
+                "Сначала запустите task_2.py для создания TF-IDF файлов."
+            )
 
         # Собираем все уникальные леммы из всех файлов
         all_lemmas = set()
@@ -101,80 +100,6 @@ class VectorSearch:
             self.doc_norms[doc_id] = np.linalg.norm(vector)
 
         print(f"Загружено {len(self.doc_ids)} документов, {len(self.vocabulary)} лемм")
-
-    def build_tfidf_vectors(self):
-        """Построение TF-IDF векторов из файлов лемм"""
-        os.makedirs(self.tfidf_dir, exist_ok=True)
-
-        # Считываем все леммы из всех документов
-        doc_lemmas = {}  # doc_id -> Counter(lemma -> count)
-        all_lemmas = set()
-
-        for filename in os.listdir(self.lemmas_dir):
-            if filename.endswith("_lemmas.txt"):
-                doc_id = int(filename.replace("page_", "").replace("_lemmas.txt", ""))
-                self.doc_ids.append(doc_id)
-
-                path = os.path.join(self.lemmas_dir, filename)
-                lemmas_counter = Counter()
-
-                with open(path, "r", encoding="utf-8") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or line.startswith(("Страница:", "URL:", "Количество", "-")):
-                            continue
-                        if ">>" in line:
-                            lemma = line.split(">>", 1)[0].strip()
-                            lemmas_counter[lemma] += 1
-                            all_lemmas.add(lemma)
-
-                doc_lemmas[doc_id] = lemmas_counter
-
-        self.doc_ids.sort()
-        self.vocabulary = sorted(all_lemmas)
-        self.lemma_to_idx = {lemma: idx for idx, lemma in enumerate(self.vocabulary)}
-
-        # Считаем DF (document frequency)
-        df = defaultdict(int)
-        for doc_id, counter in doc_lemmas.items():
-            for lemma in counter.keys():
-                df[lemma] += 1
-
-        # Считаем IDF
-        N = len(self.doc_ids)
-        for lemma in self.vocabulary:
-            self.idf[lemma] = math.log(N / df[lemma]) if df[lemma] > 0 else 0.0
-
-        # Строим TF-IDF векторы
-        for doc_id in self.doc_ids:
-            counter = doc_lemmas[doc_id]
-            total = sum(counter.values())
-
-            vector = np.zeros(len(self.vocabulary))
-            tfidf_data = []
-
-            for lemma, count in counter.items():
-                tf = count / total if total > 0 else 0
-                idf = self.idf.get(lemma, 0)
-                tfidf = tf * idf
-
-                if lemma in self.lemma_to_idx:
-                    vector[self.lemma_to_idx[lemma]] = tfidf
-
-                tfidf_data.append((lemma, idf, tfidf))
-
-            self.doc_vectors[doc_id] = vector
-            self.doc_norms[doc_id] = np.linalg.norm(vector)
-
-            # Сохраняем в файл
-            out_path = os.path.join(self.tfidf_dir, f"page_{doc_id}_lemmas_tfidf.txt")
-            with open(out_path, "w", encoding="utf-8") as f:
-                for lemma in self.vocabulary:
-                    idf_val = self.idf.get(lemma, 0)
-                    tfidf_val = vector[self.lemma_to_idx[lemma]] if lemma in self.lemma_to_idx else 0
-                    f.write(f"{lemma} {idf_val:.6f} {tfidf_val:.6f}\n")
-
-        print(f"Построено {len(self.doc_ids)} TF-IDF векторов")
 
     def normalize_query_term(self, term: str) -> str:
         """Приведение слова к лемме"""
