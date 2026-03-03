@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Поиск</title>
+  <style>
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:#111;
+      background:#fff;
+    }
+    .wrap{
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px 16px 48px;
+    }
+    h1{
+      font-size: 30px;
+      margin: 0 0 14px;
+      font-weight: 650;
+      letter-spacing: .2px;
+    }
+    form{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-bottom: 18px;
+    }
+    input[type="text"]{
+      flex: 1 1 auto;
+      padding: 10px 12px;
+      font-size: 15px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      outline: none;
+    }
+    input[type="text"]:focus{
+      border-color:#bbb;
+    }
+    button{
+      padding: 10px 14px;
+      font-size: 15px;
+      border: 1px solid #111;
+      background:#111;
+      color:#fff;
+      border-radius: 10px;
+      cursor:pointer;
+    }
+    button:hover{ opacity:.92; }
+    .meta{
+      color:#666;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .result{
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 12px 12px;
+      margin: 10px 0;
+    }
+    .top{
+      display:flex;
+      gap:10px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+    .rank{
+      color:#666;
+      font-variant-numeric: tabular-nums;
+    }
+    a{
+      color:#111;
+      text-decoration: none;
+      word-break: break-all;
+      font-weight: 600;
+    }
+    a:hover{ text-decoration: underline; }
+    .score{
+      margin-left:auto;
+      color:#666;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    .snippet{
+      margin-top: 6px;
+      color:#333;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .empty{
+      color:#666;
+      font-size: 14px;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Поиск по биологической энциклопедии</h1>
+
+    <form method="POST" autocomplete="off">
+      <input type="text" name="query" value="{{ query }}" placeholder="Введите запрос" />
+      <button type="submit">Искать</button>
+    </form>
+
+    {% if results %}
+      <div class="meta">Топ-{{ results|length }} результатов</div>
+
+      {% for r in results %}
+        <div class="result">
+          <div class="top">
+            <div class="rank">{{ loop.index }}.</div>
+            <a href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.url }}</a>
+            <div class="score">score: {{ "%.4f"|format(r.score) }}</div>
+          </div>
+          <div class="snippet">{{ r.snippet }}</div>
+        </div>
+      {% endfor %}
+
+    {% elif query %}
+      <div class="empty">Ничего не найдено по запросу “{{ query }}”.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
